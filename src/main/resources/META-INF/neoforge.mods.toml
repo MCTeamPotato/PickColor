@@ -1,0 +1,14 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+#issueTrackerURL = ""
+license = "Unlicense"
+
+[[mods]]
+modId = "pickcolor"
+version = "${version}"
+displayName = "PickColor"
+authors = "Kall"
+description = '''
+
+'''
+#logoFile = ""

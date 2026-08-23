@@ -1,0 +1,99 @@
+import net.darkhax.curseforgegradle.TaskPublishCurseForge
+import net.darkhax.curseforgegradle.UploadArtifact
+
+plugins {
+    id 'dev.architectury.loom' version '1.10-SNAPSHOT'
+    id 'net.darkhax.curseforgegradle' version '1.1.+'
+}
+
+boolean isNeo = loom.platform.get().displayName() == "NeoForge"
+
+group = project.maven_group
+version = project.minecraft_version + "-" + project.mod_version
+
+base {
+    archivesName = project.archives_name
+}
+
+repositories {
+    maven { url = 'https://files.minecraftforge.net/maven/' }
+    maven { url = 'https://maven.neoforged.net/releases' }
+    maven { url = 'https://maven.parchmentmc.org' }
+    maven { url = 'https://cursemaven.com' }
+}
+
+loom {
+    silentMojangMappingsLicense()
+}
+
+def versionMap = [
+    "1.20.1" : [forge: "47.4.20"      , parchment: "2023.09.03"],
+    "1.21.1" : [neo  : "21.1.235"     , parchment: "2024.11.17"]
+]
+
+HashMap<String, String> versionInfo = versionMap[minecraft_version]
+
+dependencies {
+    minecraft "net.minecraft:minecraft:$project.minecraft_version"
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${project.minecraft_version}:${versionInfo.parchment}@zip")
+    }
+
+    if (isNeo) {
+        neoForge "net.neoforged:neoforge:${versionInfo.neo}"
+    } else {
+        forge "net.minecraftforge:forge:${project.minecraft_version}-${versionInfo.forge}"
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    if (isNeo) {
+        filesMatching('META-INF/neoforge.mods.toml') {
+            expand version: project.version
+        }
+        exclude("META-INF/mods.toml")
+    } else {
+        filesMatching('META-INF/mods.toml') {
+            expand version: project.version
+        }
+        exclude("META-INF/neoforge.mods.toml")
+    }
+}
+
+java {
+    withSourcesJar()
+
+    sourceCompatibility = isNeo ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
+    targetCompatibility = isNeo ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = isNeo ? 21 : 17
+}
+
+String CHANGELOG = file("CHANGELOG.md").getText("UTF-8")
+
+tasks.register("publishCurseForge", TaskPublishCurseForge) {
+    if (!cf_project_id.isEmpty()) {
+        apiToken = System.getenv("CURSEFORGE_TOKEN")
+        disableVersionDetection()
+
+        UploadArtifact mainFile = upload(cf_project_id, remapJar)
+        mainFile.displayName = "${archives_name}-${version}"
+        mainFile.releaseType = "release"
+        mainFile.changelog = CHANGELOG
+        mainFile.changelogType = "markdown"
+        mainFile.addEnvironment("Client")
+        mainFile.addModLoader(isNeo ? "NeoForge" : "Forge")
+        mainFile.addJavaVersion(isNeo ? "Java 21" : "Java 17");
+        mainFile.addGameVersion(minecraft_version)
+
+        UploadArtifact sourcesFile = mainFile.withAdditionalFile(sourcesJar)
+        sourcesFile.changelog = CHANGELOG
+        sourcesFile.changelogType = "markdown"
+    } else {
+        System.err.println("CurseForge Project ID is not provided")
+    }
+}
