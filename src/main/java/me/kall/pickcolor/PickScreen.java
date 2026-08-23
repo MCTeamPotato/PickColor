@@ -10,7 +10,6 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.util.function.Consumer;
@@ -19,7 +18,6 @@ import java.util.function.Consumer;
 public class PickScreen extends Screen {
     private static final Component TITLE = Component.translatable("screen.pickcolor.title");
 
-    private final @Nullable Screen lastScreen;
     private final Consumer<Color> colorConsumer;
 
     private ResourceLocation colorsLocation;
@@ -42,9 +40,8 @@ public class PickScreen extends Screen {
 
     private boolean suppressResponder = false;
 
-    private PickScreen(@Nullable Screen lastScreen, Consumer<Color> colorConsumer) {
+    public PickScreen(Consumer<Color> colorConsumer) {
         super(TITLE);
-        this.lastScreen = lastScreen;
         this.colorConsumer = colorConsumer;
     }
 
@@ -342,7 +339,6 @@ public class PickScreen extends Screen {
     public void onClose() {
         super.onClose();
         this.removed();
-        this.minecraft.setScreen(this.lastScreen);
     }
 
     @Override
