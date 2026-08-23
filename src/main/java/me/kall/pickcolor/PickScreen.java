@@ -10,12 +10,10 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 
 @SuppressWarnings("DataFlowIssue")
@@ -51,56 +49,9 @@ public class PickScreen extends Screen {
         this.colorConsumer = colorConsumer;
     }
 
-    @Contract("_ -> new")
-    public static @NotNull PickScreen forColor(Consumer<Color> colorConsumer) {
-        return new PickScreen(Minecraft.getInstance().screen, colorConsumer);
-    }
-
-    public static @NotNull BufferedImage genColors(int size) {
-        BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-        int center = size / 2, radius = size / 2;
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                int dx = x - center;
-                int dy = y - center;
-
-                double distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance > radius) {
-                    image.setRGB(x, y, 0x00000000);
-                    continue;
-                }
-
-                float hue = (float) Math.toDegrees(Math.atan2(dy, dx));
-                if (hue < 0F) hue += 360F;
-
-                float saturation = (float) (distance / radius);
-
-                image.setRGB(x, y, Color.HSBtoRGB(hue / 360F, saturation, 1.0F));
-            }
-        }
-
-        return image;
-    }
-
-    public static @NotNull NativeImage buffered2Native(@NotNull BufferedImage bufferedImage) {
-        int width = bufferedImage.getWidth();
-        int height = bufferedImage.getHeight();
-
-        NativeImage image = new NativeImage(width, height, false);
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int argb = bufferedImage.getRGB(x, y);
-                int a = (argb >> 24) & 0xFF;
-                int r = (argb >> 16) & 0xFF;
-                int g = (argb >> 8) & 0xFF;
-                int b = argb & 0xFF;
-                image.setPixelRGBA(x, y, (a << 24) | (b << 16) | (g << 8) | r);
-            }
-        }
-
-        return image;
+    public static void forColor(Consumer<Color> colorConsumer) {
+        Minecraft minecraft = Minecraft.getInstance();
+        minecraft.setScreen(new PickScreen(minecraft.screen, colorConsumer));
     }
 
     @Override
@@ -117,9 +68,35 @@ public class PickScreen extends Screen {
 
         this.wheelY = this.height / 2 - this.wheelSize / 2;
 
-        BufferedImage wheelImage = genColors(256);
-        NativeImage nativeImage = buffered2Native(wheelImage);
-        this.colors = new DynamicTexture(nativeImage);
+        NativeImage image = new NativeImage(256, 256, false);
+
+        for (int y = 0; y < 256; y++) {
+            for (int x = 0; x < 256; x++) {
+                int dx = x - 128;
+                int dy = y - 128;
+
+                double distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 128) {
+                    image.setPixelRGBA(x, y, 0x00000000);
+                    continue;
+                }
+
+                float hue = (float) Math.toDegrees(Math.atan2(dy, dx));
+                if (hue < 0F) hue += 360F;
+
+                float saturation = (float) (distance / 128);
+
+                int rgb = Color.HSBtoRGB(hue / 360F, saturation, 1.0F);
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+
+                image.setPixelRGBA(x, y, ((0xFF << 24) | (b << 16) | (g << 8) | r));
+            }
+        }
+
+        this.colors = new DynamicTexture(image);
         this.colorsLocation = ResourceLocation.fromNamespaceAndPath(PickColor.MOD_ID, "color_wheel_" + System.nanoTime());
         this.minecraft.getTextureManager().register(this.colorsLocation, this.colors);
 
@@ -209,21 +186,20 @@ public class PickScreen extends Screen {
     private int clampColor(String s) {
         if (s == null || s.isEmpty()) return 255;
         try {
-            int val = Integer.parseInt(s);
-            return Math.clamp(val, 0, 255);
+            return Math.clamp(Integer.parseInt(s), 0, 255);
         } catch (NumberFormatException e) {
             return 255;
         }
     }
 
     private void onDone() {
-        this.colorConsumer.accept(this.colorNow);
         this.onClose();
+        this.colorConsumer.accept(this.colorNow);
     }
 
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
 
         guiGraphics.blit(this.colorsLocation, this.wheelX, this.wheelY, this.wheelSize, this.wheelSize, 0, 0, 256, 256, 256, 256);
 
@@ -264,8 +240,6 @@ public class PickScreen extends Screen {
         guiGraphics.drawString(this.font, "G:", argX, this.height / 2 - 30, 0xFFFFFF);
         guiGraphics.drawString(this.font, "B:", argX, this.height / 2 - 5, 0xFFFFFF);
         guiGraphics.drawString(this.font, "A:", argX, this.height / 2 + 20, 0xFFFFFF);
-
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override
@@ -363,13 +337,18 @@ public class PickScreen extends Screen {
     }
 
     @Override
-    public void onClose() {
+    public void removed() {
         if (this.colors != null) {
             this.minecraft.getTextureManager().release(this.colorsLocation);
             this.colors.close();
         }
-        this.minecraft.setScreen(this.lastScreen);
+    }
+
+    @Override
+    public void onClose() {
         super.onClose();
+        this.removed();
+        this.minecraft.setScreen(this.lastScreen);
     }
 
     @Override
