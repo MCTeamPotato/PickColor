@@ -1,7 +1,6 @@
 package me.kall.pickcolor;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -47,11 +46,6 @@ public class PickScreen extends Screen {
         super(TITLE);
         this.lastScreen = lastScreen;
         this.colorConsumer = colorConsumer;
-    }
-
-    public static void forColor(Consumer<Color> colorConsumer) {
-        Minecraft minecraft = Minecraft.getInstance();
-        minecraft.setScreen(new PickScreen(minecraft.screen, colorConsumer));
     }
 
     @Override
