@@ -210,7 +210,7 @@ public class PickScreen extends Screen {
         if (s == null || s.isEmpty()) return 255;
         try {
             int val = Integer.parseInt(s);
-            return Math.max(0, Math.min(255, val));
+            return Math.clamp(val, 0, 255);
         } catch (NumberFormatException e) {
             return 255;
         }
@@ -223,7 +223,7 @@ public class PickScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics);
+        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         guiGraphics.blit(this.colorsLocation, this.wheelX, this.wheelY, this.wheelSize, this.wheelSize, 0, 0, 256, 256, 256, 256);
 
@@ -339,7 +339,7 @@ public class PickScreen extends Screen {
     }
 
     private void selectBrightness(double mouseY) {
-        double clampedY = Math.max(this.brightY, Math.min(this.brightY + this.brightHeight, mouseY));
+        double clampedY = Math.clamp(mouseY, this.brightY, this.brightY + this.brightHeight);
         float t = (float) ((clampedY - this.brightY) / this.brightHeight);
         this.brightness = 1f - t;
         this.hsb2Color();
