@@ -29,7 +29,7 @@ public class PickScreen extends Screen {
     private float brightness = 1f;
     private int alpha = 255;
 
-    private Color colorNow = new Color(255, 255, 255, 255);
+    private Color colorNow;
 
     private EditBox redEdit, greenEdit, blueEdit, alphaEdit;
 
@@ -40,9 +40,14 @@ public class PickScreen extends Screen {
 
     private boolean suppressResponder = false;
 
-    public PickScreen(Consumer<Color> colorConsumer) {
+    public PickScreen(Color initColor, Consumer<Color> colorConsumer) {
         super(TITLE);
+        this.colorNow = initColor;
         this.colorConsumer = colorConsumer;
+    }
+
+    public PickScreen(Consumer<Color> colorConsumer) {
+        this(new Color(255, 255, 255, 255), colorConsumer);
     }
 
     @Override
